@@ -23,8 +23,14 @@ import pandas as pd
 import numpy as np
 
 # ── file path ──────────────────────────────────────────────────────────────────
-DATA_PATH = "../data/gp_data_1986_to_2015.csv"
-IND_DESC_PATH = "../data/industry_descriptions.csv"
+# Paths are relative to the project root (one level above src/)
+# This works whether you run from src/ or from the project root.
+import os as _os
+_HERE = _os.path.dirname(_os.path.abspath(__file__))  # → .../GP_G1/src
+_ROOT = _os.path.dirname(_HERE)                        # → .../GP_G1
+
+DATA_PATH     = _os.path.join(_ROOT, "data", "gp_data_1986_to_2015.csv")
+IND_DESC_PATH = _os.path.join(_ROOT, "data", "industry_descriptions.csv")
 
 # ── internal helper ────────────────────────────────────────────────────────────
 def _strip_cols(df: pd.DataFrame) -> pd.DataFrame:
@@ -63,9 +69,22 @@ def get_excess(path: str = DATA_PATH) -> pd.DataFrame:
       - 'Mkt-RF'      : market excess return (already provided as-is)
       - 'Food', 'Beer', ..., 'Fin'   : 43 industry excess returns = r_i - RF
 
-    Index: integer 0..359 (row order = time order)
-    A separate 'Month' column is NOT included — use get_split() if you need
-    the time dimension for slicing.
+    !! WARNING — PORTFOLIO OPTIMIZATION (M2, M3) !!
+    This function returns 44 columns: 43 industries + 1 market column (Mkt-RF).
+    When building EWP / TAN / GMV, you must use ONLY the 43 industry columns.
+    NEVER pass the full 44-column DataFrame into the optimizer — Mkt-RF is a
+    benchmark, not an investable asset in this problem.
+
+    Correct usage:
+        excess      = get_excess()           # 44 cols
+        industries  = get_industry_names()   # 43 industry names
+        r_industries = excess[industries]    # 43 cols  ← use this for optimization
+        r_mkt        = excess['Mkt-RF']      # 1 col    ← use this for beta / SML
+
+    !! WARNING — TIME-SERIES PLOTTING (M2, M3) !!
+    This DataFrame has NO Month column. To label the x-axis when plotting:
+        months = get_month_index()           # 360 YYYYMM integers, same row order
+    Then align manually: months and excess share the same integer index 0..359.
 
     Note: After this step, treat RF = 0. All downstream portfolio math
     (Sharpe = mu/sigma, tangency weights, etc.) uses these excess returns directly.
@@ -81,7 +100,6 @@ def get_excess(path: str = DATA_PATH) -> pd.DataFrame:
     for col in industries:
         excess[col] = df[col].values - rf   # r_excess = r_industry - RF
 
-    #print(excess.describe()) 
     return excess
 
 
@@ -97,7 +115,18 @@ def get_split(path: str = DATA_PATH):
     train : pd.DataFrame  shape (300, 44)
     test  : pd.DataFrame  shape ( 60, 44)
 
-    Both DataFrames have the same 44 columns as get_excess().
+    Both DataFrames have the same 44 columns as get_excess():
+      43 industry columns + 'Mkt-RF'. Use get_industry_names() to slice
+      just the 43 investable assets before running any optimization.
+
+    Correct usage (M3):
+        train, test = get_split()
+        industries  = get_industry_names()
+        r_train     = train[industries]   # (300, 43)  for optimization
+        mkt_train   = train['Mkt-RF']     # (300,)     for beta / CAPM mu
+        r_test      = test[industries]    # (60, 43)   for OOS evaluation
+        mkt_test    = test['Mkt-RF']      # (60,)      for OOS beta check
+
     Indices are reset to 0-based within each split.
     """
     excess = get_excess(path)
@@ -165,6 +194,11 @@ def summary(path: str = DATA_PATH):
     print()
     print("Column names (industries):")
     print(industries)
+    print()
+    print('MKT mean:', excess['Mkt-RF'].mean())
+    print('MKT std:', excess['Mkt-RF'].std())
+    print('Ind mean range:', excess[industries].mean().min(), excess[industries].mean().max())
+    print('Ind std range:', excess[industries].std().min(), excess[industries].std().max())
     print("=" * 55)
 
 
