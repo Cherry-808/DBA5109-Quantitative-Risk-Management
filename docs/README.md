@@ -1,12 +1,11 @@
-# Group Project — GP_G#
-## Course | Due: Monday, Week 13
+# Group Project — GP_G4
 
 ---
 
 ## 📁 Project Structure
 
 ```
-GP_G#/
+GP_G4/
 ├── data/                               ← Raw data (read-only)
 │   ├── gp_data_1986_to_2015.csv        360 months × 46 cols (Kenneth R. French)
 │   └── industry_descriptions.csv       43 industry code → full name
