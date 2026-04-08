@@ -12,8 +12,8 @@ GP_G4/
 │
 ├── src/                                ← All source code (run from here)
 │   ├── data_pipeline.py     M1 ✅      Data loading, excess returns, train/test split
-│   ├── portfolio_core.py    M2 🔲      EWP / TAN / GMV + in-sample metrics + plots
-│   ├── robust_portfolios.py M3 🔲      Shrinkage estimators + OOS evaluation + plots
+│   ├── portfolio_core.py    M2 ✅      EWP / TAN / GMV + in-sample metrics + plots
+│   ├── robust_portfolios.py M3 ✅      Shrinkage estimators + OOS evaluation + plots
 │   └── data_challenge.py    M4 🔲      Final strategy, weight selection, CSV export
 │
 ├── outputs/
@@ -43,19 +43,19 @@ GP_G4/
 - [x] **1.1.1** Compute excess returns for 43 industries → `get_excess()` in `data_pipeline.py`
 
 #### § 1.2 Basic Portfolio Construction & In-sample Analysis
-- [ ] **1.2.1** Build EWP, TAN, GMV using full 1986-2015 data
-- [ ] **1.2.2** Compute μ, σ, Sharpe, β for all 43 industries + MKT + EWP + TAN + GMV
-- [ ] **Table 1** 3×4 in-sample performance table → `outputs/tables/insample_3x4.csv`
-- [ ] **Figure 1** σ vs E[r] with 43 industries + special portfolios + in-sample EF → `outputs/figures/sigma_vs_er_insample.png`
-- [ ] **Figure 2** β vs E[r] + Security Market Line (SML) → `outputs/figures/beta_vs_er_insample.png`
+- [X] **1.2.1** Build EWP, TAN, GMV using full 1986-2015 data
+- [X] **1.2.2** Compute μ, σ, Sharpe, β for all 43 industries + MKT + EWP + TAN + GMV
+- [X] **Table 1** 3×4 in-sample performance table → `outputs/tables/insample_3x4.csv`
+- [X] **Figure 1** σ vs E[r] with 43 industries + special portfolios + in-sample EF → `outputs/figures/sigma_vs_er_insample.png`
+- [X] **Figure 2** β vs E[r] + Security Market Line (SML) → `outputs/figures/beta_vs_er_insample.png`
 
 #### § 1.3 Robust Construction & Out-of-sample Analysis
-- [ ] **1.3.1** Beta shrinkage: β_shrink = 0.5·β̄ + 0.5·β̂
-- [ ] **1.3.2** CAPM expected return: μ_CAPM = β_shrink × E[r_MKT] (training mean)
-- [ ] **1.3.3** Constant correlation cov matrix V_CC; shrinkage: V_shrink = 0.3·V_CC + 0.7·V̂
-- [ ] **1.3.4** Build TAN-robust (uses V_shrink + μ_CAPM) and GMV-robust (uses V_shrink)
-- [ ] **Figure 3** OOS σ vs E[r] — all portfolios on test data; include "true" EF + "realized" EF → `outputs/figures/sigma_vs_er_oos.png`
-- [ ] **Table 2** 3×6 OOS performance table → `outputs/tables/oos_3x6.csv`
+- [X] **1.3.1** Beta shrinkage: β_shrink = 0.5·β̄ + 0.5·β̂
+- [X] **1.3.2** CAPM expected return: μ_CAPM = β_shrink × E[r_MKT] (training mean)
+- [X] **1.3.3** Constant correlation cov matrix V_CC; shrinkage: V_shrink = 0.3·V_CC + 0.7·V̂
+- [X] **1.3.4** Build TAN-robust (uses V_shrink + μ_CAPM) and GMV-robust (uses V_shrink)
+- [X] **Figure 3** OOS σ vs E[r] — all portfolios on test data; include "true" EF + "realized" EF → `outputs/figures/sigma_vs_er_oos.png`
+- [X] **Table 2** 3×6 OOS performance table → `outputs/tables/oos_3x6.csv`
 - [ ] **Written analysis** Contrast in-sample vs OOS; findings, insights, limitations → in report
 
 ### Part 2 — The Data Challenge (35 pts)
