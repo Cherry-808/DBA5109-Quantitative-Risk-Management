@@ -96,7 +96,6 @@ def gmv(cov):   #returns gmv weights, mean and std
         fun     = lambda w: w @ cov @ w,
         x0      = np.ones(n) / n,
         method  = 'SLSQP',
-        bounds  = [(0, 1)] * n,                # long-only
         constraints = {'type': 'eq', 'fun': lambda w: w.sum() - 1}
     )
 
@@ -125,7 +124,6 @@ def tan(mu_vec, cov):
         fun     = lambda w: -(w @ mu_vec) / np.sqrt(w @ cov @ w),  # just μ/σ
         x0      = np.ones(n) / n,
         method  = 'SLSQP',
-        bounds  = [(0, 1)] * n,
         constraints = {'type': 'eq', 'fun': lambda w: w.sum() - 1}
     )
     mu    = result.x @ mu_vec
@@ -227,7 +225,6 @@ def plot_ef(mu_vec, Sigma, mu_gmv, sigma_gmv, mu_tan, sigma_tan, mu_ewp, sigma_e
             fun         = lambda w: w @ Sigma @ w,
             x0          = np.ones(n) / n,
             method      = 'SLSQP',
-            bounds      = [(0, 1)] * n,
             constraints = [
                 {'type': 'eq', 'fun': lambda w: w.sum() - 1},
                 {'type': 'eq', 'fun': lambda w: w @ mu_vec - target}
