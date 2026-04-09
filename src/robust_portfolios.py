@@ -79,8 +79,9 @@ w_tan_r, _, _ = tan(mu_capm, Sigma_shrink)
 w_gmv_r, _, _ = gmv(Sigma_shrink)
 
 # ======================
-# OOS PERFORMANCE
+# OOS TABLE (3 x 6 WITH MKT)
 # ======================
+
 def evaluate_oos(w, r_test):
     r = r_test @ w
     mu = np.mean(r)
@@ -88,46 +89,64 @@ def evaluate_oos(w, r_test):
     sharpe = mu / sigma
     return mu, sigma, sharpe
 
-results = []
+# ---- Compute metrics ----
+metrics = {}
 
-# MKT
-mu = np.mean(mkt_test)
-sigma = np.std(mkt_test, ddof=1)
-sharpe = mu / sigma
-results.append(["MKT", mu, sigma, sharpe])
+metrics["EWP"] = evaluate_oos(w_ewp, r_test)
+metrics["TAN"] = evaluate_oos(w_tan, r_test)
+metrics["TAN-robust"] = evaluate_oos(w_tan_r, r_test)
+metrics["GMV"] = evaluate_oos(w_gmv, r_test)
+metrics["GMV-robust"] = evaluate_oos(w_gmv_r, r_test)
 
-# portfolios
-for name, w in [
-    ("EWP", w_ewp),
-    ("TAN", w_tan),
-    ("TAN-robust", w_tan_r),
-    ("GMV", w_gmv),
-    ("GMV-robust", w_gmv_r),
-]:
-    mu, sigma, sharpe = evaluate_oos(w, r_test)
-    results.append([name, mu, sigma, sharpe])
+# ---- MKT (IMPORTANT: use test data directly) ----
+mu_mkt = np.mean(mkt_test)
+sigma_mkt = np.std(mkt_test, ddof=1)
+sharpe_mkt = mu_mkt / sigma_mkt
 
-df_oos = pd.DataFrame(results, columns=["Portfolio","Return","Vol","Sharpe"])
+metrics["MKT"] = (mu_mkt, sigma_mkt, sharpe_mkt)
+
+# ---- Enforce correct column order ----
+cols = ["MKT", "EWP", "TAN", "TAN-robust", "GMV", "GMV-robust"]
+
+# ---- Build 3x6 table ----
+rows = ["Return", "Sigma", "Sharpe"]
+
+data = []
+for i in range(3):
+    row = []
+    for key in cols:
+        row.append(metrics[key][i])
+    data.append(row)
+    
+# Add index name so it shows in CSV
+df_oos = pd.DataFrame(data, index=rows, columns=cols)
+df_oos.index.name = "Metric"
 
 # SAVE TABLE
-os.makedirs("../outputs/tables", exist_ok=True)
-df_oos.to_csv("../outputs/tables/oos_3x6.csv", index=False)
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+output_path = os.path.join(BASE_DIR, "outputs", "tables")
+os.makedirs(output_path, exist_ok=True)
+
+df_oos.to_csv(os.path.join(output_path, "M3_oos_3x6.csv"), index=True)
 
 print("\nOOS Performance Table:")
 print(df_oos)
 
 # ======================
-# STEP 7 — TRUE vs REALIZED EF
+# TRUE vs REALIZED EF
 # ======================
-def efficient_frontier(mu, Sigma, points=50):
-    target = np.linspace(mu.min(), mu.max(), points)
+
+def efficient_frontier(mu, Sigma, points=60):
+    from scipy.optimize import minimize
+    
+    targets = np.linspace(mu.min(), mu.max(), points)
     sigmas = []
 
-    for t in target:
-        from scipy.optimize import minimize
+    for t in targets:
         res = minimize(
             lambda w: w @ Sigma @ w,
-            x0=np.ones(n)/n,
+            x0=np.ones(len(mu))/len(mu),
             constraints=[
                 {'type':'eq','fun':lambda w: w.sum()-1},
                 {'type':'eq','fun':lambda w: w @ mu - t}
@@ -135,48 +154,83 @@ def efficient_frontier(mu, Sigma, points=50):
         )
         sigmas.append(np.sqrt(res.fun) if res.success else np.nan)
 
-    return target, np.array(sigmas)
+    return targets, np.array(sigmas)
 
-# TRUE EF (train)
-mu_train = r_train.mean(axis=0)
-target_train, sigma_train = efficient_frontier(mu_train, Sigma_hat)
+# ===== TRUE EF (TRAIN) =====
+mu_train_vec = r_train.mean(axis=0)
+Sigma_train = np.cov(r_train, rowvar=False)
+mu_true, sigma_true = efficient_frontier(mu_train_vec, Sigma_train)
 
-# REALIZED EF (test)
-mu_test = r_test.mean(axis=0)
+# ===== REALIZED EF (TEST) =====
+mu_test_vec = r_test.mean(axis=0)
 Sigma_test = np.cov(r_test, rowvar=False)
-target_test, sigma_test = efficient_frontier(mu_test, Sigma_test)
+mu_real, sigma_real = efficient_frontier(mu_test_vec, Sigma_test)
+
+# ===== INDUSTRY POINTS (TEST EVALUATION) =====
+asset_mus = r_test.mean(axis=0)
+asset_sigmas = r_test.std(axis=0, ddof=1)
 
 # ======================
-# STEP 8 — PLOT OOS
+# FULL OOS σ vs E[r] PLOT
 # ======================
-plt.figure(figsize=(10,7))
 
-# EF curves
-plt.plot(sigma_train, target_train, label="True EF (Train)", linestyle='--')
-plt.plot(sigma_test, target_test, label="Realized EF (Test)", linestyle='-')
+# ===== PLOT =====
+plt.figure(figsize=(12, 8))
 
-# portfolios
-for name, w in [
-    ("EWP", w_ewp),
-    ("TAN", w_tan),
-    ("TAN-R", w_tan_r),
-    ("GMV", w_gmv),
-    ("GMV-R", w_gmv_r),
-]:
+# 43 industries
+plt.scatter(asset_sigmas, asset_mus,
+            color='lightsteelblue', alpha=0.6, s=40,
+            label='43 Industry Portfolios')
+
+# Label a few (avoid clutter)
+for i, name in enumerate(industries):
+    if asset_mus[i] > asset_mus.mean() + asset_mus.std():
+        plt.annotate(name, (asset_sigmas[i], asset_mus[i]),
+                     fontsize=7, alpha=0.7)
+
+# ===== TRUE EF =====
+valid_true = ~np.isnan(sigma_true)
+plt.plot(sigma_true[valid_true], mu_true[valid_true],
+         linestyle='--', linewidth=2,
+         label='True EF (Train)')
+
+# ===== REALIZED EF =====
+valid_real = ~np.isnan(sigma_real)
+plt.plot(sigma_real[valid_real], mu_real[valid_real],
+         linestyle='-', linewidth=2,
+         label='Realized EF (Test)')
+
+# ===== SPECIAL PORTFOLIOS (evaluated on TEST) =====
+def plot_point(name, w, color):
     mu, sigma, _ = evaluate_oos(w, r_test)
-    plt.scatter(sigma, mu, label=name)
+    plt.scatter(sigma, mu, color=color, s=120, marker='*', label=name)
 
-# MKT
-plt.scatter(np.std(mkt_test), np.mean(mkt_test), label="MKT", marker='x')
+plot_point("EWP", w_ewp, "orange")
+plot_point("TAN", w_tan, "red")
+plot_point("GMV", w_gmv, "green")
+plot_point("TAN-R", w_tan_r, "purple")
+plot_point("GMV-R", w_gmv_r, "darkgreen")
 
-plt.xlabel("σ")
-plt.ylabel("E[r]")
-plt.legend()
-plt.title("Out-of-Sample σ vs E[r]")
-plt.grid(True)
+# ===== MKT (TEST) =====
+mu_mkt = np.mean(mkt_test)
+sigma_mkt = np.std(mkt_test, ddof=1)
 
-os.makedirs("../outputs/figures", exist_ok=True)
-plt.savefig("../outputs/figures/sigma_vs_er_oos.png")
-plt.close()
+plt.scatter(sigma_mkt, mu_mkt,
+            color='black', s=150, marker='D',
+            label='MKT')
+
+# ===== FINAL STYLING =====
+plt.xlabel('σ — Volatility (%)', fontsize=12)
+plt.ylabel('E[r] — Mean Excess Return (%)', fontsize=12)
+plt.title('Out-of-Sample σ vs E[r] (2011–2015)', fontsize=14)
+
+plt.legend(fontsize=9)
+plt.grid(True, alpha=0.3)
+
+#Save figure
+fig_path = os.path.join(BASE_DIR, "outputs", "figures")
+os.makedirs(fig_path, exist_ok=True)
+
+plt.savefig(os.path.join(fig_path, "M3_sigma_vs_er_oos.png"))
 
 print("\n✅ OOS analysis complete")
