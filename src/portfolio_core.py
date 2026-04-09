@@ -6,6 +6,8 @@ import numpy as np
 import pandas as pd
 from scipy.optimize import minimize
 
+#change wd
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 train, test = get_split()
 industries = get_industry_names()
@@ -286,6 +288,7 @@ def plot_ef(mu_vec, Sigma, mu_gmv, sigma_gmv, mu_tan, sigma_tan, mu_ewp, sigma_e
                 fontsize=7, alpha=0.7,
                 xytext=(4, 2), textcoords='offset points')
     plt.tight_layout()
+    plt.savefig('M2_sigma_vs_er_insample.png', dpi=150, bbox_inches='tight')
     plt.show()
 
 plot_ef(mu_vec, Sigma, mu_gmv, sigma_gmv, mu_tan, sigma_tan, mu_ewp, sigma_ewp, mu_mkt, sigma_mkt, industries)
@@ -359,7 +362,23 @@ def plot_sml(industry_stats, mu_ewp, mu_gmv, mu_tan, mu_mkt,
     ax.legend(fontsize=9, loc='upper left')
     ax.grid(True, alpha=0.3)
     plt.tight_layout()
+    plt.savefig('M2_beta_vs_er_insample.png', dpi=150, bbox_inches='tight')
     plt.show()
 
 plot_sml(industry_stats, mu_ewp, mu_gmv, mu_tan, mu_mkt,
          beta_ewp, beta_gmv, beta_tan, beta_mkt, mkt_train)
+
+
+######## SAVE OUTPUTS ###################
+
+#----------- in sample 3x4 -------------------#
+summary = pd.DataFrame({
+    'MKT': [mu_mkt,   sigma_mkt,   sharpe_mkt],
+    'EWP': [mu_ewp,   sigma_ewp,   sharpe_ewp],
+    'GMV': [mu_gmv,   sigma_gmv,   sharpe_gmv],
+    'TAN': [mu_tan,   sigma_tan,   sharpe_tan],
+}, index=['mu', 'sigma', 'Sharpe'])
+
+summary.to_csv('M2_insample_3x4.csv')
+print("\nIn-Sample Summary (3x4):")
+print(summary.round(4))
