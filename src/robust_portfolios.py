@@ -79,6 +79,45 @@ w_tan_r, _, _ = tan(mu_capm, Sigma_shrink)
 w_gmv_r, _, _ = gmv(Sigma_shrink)
 
 # ======================
+# PRINT & SAVE WEIGHTS
+# ======================
+
+def print_weights(w, name):
+    df = pd.DataFrame(w, index=industries, columns=["Weight"])
+    print(f"\n{name} Weights")
+    print("="*50)
+    print(df.to_string())
+    print("="*50)
+
+# Print all portfolios
+print_weights(w_ewp, "EWP")
+print_weights(w_tan, "TAN")
+print_weights(w_gmv, "GMV")
+print_weights(w_tan_r, "TAN-robust")
+print_weights(w_gmv_r, "GMV-robust")
+
+# Save all weights to CSV
+weights_df = pd.DataFrame({
+    "EWP": w_ewp,
+    "TAN": w_tan,
+    "GMV": w_gmv,
+    "TAN-robust": w_tan_r,
+    "GMV-robust": w_gmv_r
+}, index=industries)
+
+# SAVE TABLE
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+output_path = os.path.join(BASE_DIR, "outputs", "tables")
+os.makedirs(output_path, exist_ok=True)
+
+weights_df.index.name = "Industry"
+
+weights_df.to_csv(os.path.join(output_path, "portfolio_weights.csv"))
+
+print("\n✅ Portfolio weights saved")
+
+# ======================
 # OOS TABLE (3 x 6 WITH MKT)
 # ======================
 
@@ -121,12 +160,6 @@ for i in range(3):
 # Add index name so it shows in CSV
 df_oos = pd.DataFrame(data, index=rows, columns=cols)
 df_oos.index.name = "Metric"
-
-# SAVE TABLE
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
-output_path = os.path.join(BASE_DIR, "outputs", "tables")
-os.makedirs(output_path, exist_ok=True)
 
 df_oos.to_csv(os.path.join(output_path, "M3_oos_3x6.csv"), index=True)
 
