@@ -173,7 +173,7 @@ print(df_oos)
 def efficient_frontier(mu, Sigma, points=60):
     from scipy.optimize import minimize
     
-    targets = np.linspace(mu.min(), mu.max(), points)
+    targets = np.linspace(0, mu.max()*2, points)
     sigmas = []
 
     for t in targets:
@@ -189,15 +189,46 @@ def efficient_frontier(mu, Sigma, points=60):
 
     return targets, np.array(sigmas)
 
-# ===== TRUE EF (TRAIN) =====
+def realized_frontier(mu_train, Sigma_train, r_test, points=50):
+    from scipy.optimize import minimize
+
+    targets = np.linspace(0, mu_train.max()*2, points)
+
+    realized_mu = []
+    realized_sigma = []
+
+    for t in targets:
+        res = minimize(
+            lambda w: w @ Sigma_train @ w,
+            x0=np.ones(len(mu_train))/len(mu_train),
+            constraints=[
+                {'type':'eq','fun':lambda w: w.sum()-1},
+                {'type':'eq','fun':lambda w: w @ mu_train - t}
+            ]
+        )
+
+        if res.success:
+            w = res.x
+
+            # Evaluate on TEST
+            r = r_test @ w
+            realized_mu.append(np.mean(r))
+            realized_sigma.append(np.std(r, ddof=1))
+
+    return np.array(realized_mu), np.array(realized_sigma)
+
+# ===== ESTIMATED EF (TRAIN → TRAIN) =====
 mu_train_vec = r_train.mean(axis=0)
 Sigma_train = np.cov(r_train, rowvar=False)
-mu_true, sigma_true = efficient_frontier(mu_train_vec, Sigma_train)
+mu_est, sigma_est = efficient_frontier(mu_train_vec, Sigma_train)
 
-# ===== REALIZED EF (TEST) =====
+# ===== TRUE (TEST → TEST) =====
 mu_test_vec = r_test.mean(axis=0)
 Sigma_test = np.cov(r_test, rowvar=False)
-mu_real, sigma_real = efficient_frontier(mu_test_vec, Sigma_test)
+mu_true, sigma_true = efficient_frontier(mu_test_vec, Sigma_test)
+
+# ===== REALIZED EF (TRAIN → TEST) =====
+mu_real, sigma_real = realized_frontier(mu_train_vec, Sigma_train, r_test)
 
 # ===== INDUSTRY POINTS (TEST EVALUATION) =====
 asset_mus = r_test.mean(axis=0)
@@ -221,17 +252,17 @@ for i, name in enumerate(industries):
         plt.annotate(name, (asset_sigmas[i], asset_mus[i]),
                      fontsize=7, alpha=0.7)
 
+# ===== ESTIMATED EF =====
+valid_est = ~np.isnan(sigma_est)
+plt.plot(sigma_est[valid_est], mu_est[valid_est], linestyle='--', label="Estimated EF (Train)")
+
 # ===== TRUE EF =====
 valid_true = ~np.isnan(sigma_true)
-plt.plot(sigma_true[valid_true], mu_true[valid_true],
-         linestyle='--', linewidth=2,
-         label='True EF (Train)')
+plt.plot(sigma_true[valid_true], mu_true[valid_true], linestyle='-', label="True EF (Test)")
 
 # ===== REALIZED EF =====
 valid_real = ~np.isnan(sigma_real)
-plt.plot(sigma_real[valid_real], mu_real[valid_real],
-         linestyle='-', linewidth=2,
-         label='Realized EF (Test)')
+plt.plot(sigma_real[valid_real], mu_real[valid_real], linestyle='--', color='red', label="Realized EF (Train → Test)")
 
 # ===== SPECIAL PORTFOLIOS (evaluated on TEST) =====
 def plot_point(name, w, color):
@@ -242,7 +273,7 @@ plot_point("EWP", w_ewp, "orange")
 plot_point("TAN", w_tan, "red")
 plot_point("GMV", w_gmv, "green")
 plot_point("TAN-R", w_tan_r, "purple")
-plot_point("GMV-R", w_gmv_r, "darkgreen")
+plot_point("GMV-R", w_gmv_r, "pink")
 
 # ===== MKT (TEST) =====
 mu_mkt = np.mean(mkt_test)
@@ -257,7 +288,7 @@ plt.xlabel('σ — Volatility (%)', fontsize=12)
 plt.ylabel('E[r] — Mean Excess Return (%)', fontsize=12)
 plt.title('Out-of-Sample σ vs E[r] (2011–2015)', fontsize=14)
 
-plt.legend(fontsize=9)
+plt.legend(frameon=True, fontsize=10)
 plt.grid(True, alpha=0.3)
 
 #Save figure
