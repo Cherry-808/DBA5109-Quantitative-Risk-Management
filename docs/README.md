@@ -14,7 +14,7 @@ GP_G4/
 │   ├── data_pipeline.py     M1 ✅      Data loading, excess returns, train/test split
 │   ├── portfolio_core.py    M2 ✅      EWP / TAN / GMV + in-sample metrics + plots
 │   ├── robust_portfolios.py M3 ✅      Shrinkage estimators + OOS evaluation + plots
-│   └── data_challenge.py    M4 🔲      Final strategy, weight selection, CSV export
+│   └── data_challenge.py    M4 ✅      Final strategy, weight selection, CSV export
 │
 ├── outputs/
 │   ├── tables/
@@ -32,44 +32,6 @@ GP_G4/
 └── submission/                         ← Final zip contents assembled here
     └── Recommendation_G#.csv           M4: 43 weights, header "G#", rows sum to 1
 ```
-
----
-
-## 📋 PDF Deliverables Checklist
-
-### Part 1 — Data Exploration and Analysis (15 pts)
-
-#### § 1.1 Pre-processing
-- [x] **1.1.1** Compute excess returns for 43 industries → `get_excess()` in `data_pipeline.py`
-
-#### § 1.2 Basic Portfolio Construction & In-sample Analysis
-- [X] **1.2.1** Build EWP, TAN, GMV using full 1986-2015 data
-- [X] **1.2.2** Compute μ, σ, Sharpe, β for all 43 industries + MKT + EWP + TAN + GMV
-- [X] **Table 1** 3×4 in-sample performance table → `outputs/tables/insample_3x4.csv`
-- [X] **Figure 1** σ vs E[r] with 43 industries + special portfolios + in-sample EF → `outputs/figures/sigma_vs_er_insample.png`
-- [X] **Figure 2** β vs E[r] + Security Market Line (SML) → `outputs/figures/beta_vs_er_insample.png`
-
-#### § 1.3 Robust Construction & Out-of-sample Analysis
-- [X] **1.3.1** Beta shrinkage: β_shrink = 0.5·β̄ + 0.5·β̂
-- [X] **1.3.2** CAPM expected return: μ_CAPM = β_shrink × E[r_MKT] (training mean)
-- [X] **1.3.3** Constant correlation cov matrix V_CC; shrinkage: V_shrink = 0.3·V_CC + 0.7·V̂
-- [X] **1.3.4** Build TAN-robust (uses V_shrink + μ_CAPM) and GMV-robust (uses V_shrink)
-- [X] **Figure 3** OOS σ vs E[r] — all portfolios on test data; include "true" EF + "realized" EF → `outputs/figures/sigma_vs_er_oos.png`
-- [X] **Table 2** 3×6 OOS performance table → `outputs/tables/oos_3x6.csv`
-- [ ] **Written analysis** Contrast in-sample vs OOS; findings, insights, limitations → in report
-
-### Part 2 — The Data Challenge (35 pts)
-- [ ] **Strategy design** Any method; no post-2015 info; weights sum to 1; static
-- [ ] **Recommendation CSV** 43 rows, one column, header = "G#" → `submission/Recommendation_G#.csv`
-- [ ] **Writeup** Thought process, intermediate steps, visualizations → `docs/investment_thesis.md`
-- [ ] **Week 13 presentation** All members present strategy, findings, reflections
-
-### Final Zip — GP_G#.zip
-- [ ] `report.pdf` or `report.docx`
-- [ ] `slides.pptx`
-- [ ] All `.py` source files
-- [ ] `Recommendation_G#.csv`
-
 ---
 
 ## Quick Start
@@ -113,32 +75,3 @@ data_pipeline.py  →  portfolio_core.py  →  robust_portfolios.py  →  data_c
 Always run from `src/`. Do not move files between folders.
 
 ---
-
-## Formula Reference
-
-### In-sample (M2)
-- μ = sample mean of excess returns (full 360 months)
-- σ = sample std of excess returns
-- Sharpe = μ / σ  (RF treated as 0 after excess return step)
-- β = Cov(r_i, r_MKT) / Var(r_MKT)
-- w_EWP = 1/43
-- w_TAN ∝ Σ⁻¹μ, normalized to sum = 1
-- w_GMV ∝ Σ⁻¹1, normalized to sum = 1
-
-### Robust estimation (M3)
-- β_shrink = 0.5·β̄ + 0.5·β̂  where β̄ = mean of all 43 estimated betas
-- μ_CAPM = β_shrink × E[r_MKT]  where E[r_MKT] = training-set mean of Mkt-RF
-- V_CC[i,j] = σ_i·σ_j·ρ̄ for i≠j,  σ_i² for i=j  (ρ̄ = mean of all pairwise correlations)
-- V_shrink = 0.3·V_CC + 0.7·V̂  (shrinkage constants fixed by problem brief)
-- w_TAN-robust ∝ V_shrink⁻¹·μ_CAPM, normalized
-- w_GMV-robust ∝ V_shrink⁻¹·1, normalized
-
-### OOS evaluation split (M3)
-- Training: rows 0–299, 1986–2010 (construct portfolios here)
-- Test: rows 300–359, 2011–2015 (evaluate μ, σ, Sharpe here)
-- "True" EF = efficient frontier computed from test-set parameters
-- "Realized" EF = training-set weights applied to test-set returns
-
----
-
-*Update the checklist above as each deliverable is completed.*
